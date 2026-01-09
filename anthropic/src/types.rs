@@ -11,7 +11,7 @@ pub enum Role {
     Assistant,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum ContentBlock {
     Text {
@@ -51,7 +51,7 @@ pub enum ImageSource {
     Base64 { media_type: String, data: String },
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ToolResultContent {
     Text(String),
@@ -227,10 +227,26 @@ pub enum StopReason {
     ToolUse,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct CacheCreation {
+    #[serde(default)]
+    pub ephemeral_1h_input_tokens: u32,
+    #[serde(default)]
+    pub ephemeral_5m_input_tokens: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Usage {
     pub input_tokens: u32,
     pub output_tokens: u32,
+    #[serde(default)]
+    pub cache_creation_input_tokens: u32,
+    #[serde(default)]
+    pub cache_read_input_tokens: u32,
+    #[serde(default)]
+    pub cache_creation: CacheCreation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub service_tier: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Serialize)]
