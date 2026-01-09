@@ -3,10 +3,10 @@ use std::time::Duration;
 
 use backoff::ExponentialBackoff;
 use futures_util::StreamExt;
-use reqwest::header::{ACCEPT, CONTENT_TYPE, HeaderMap, HeaderValue, USER_AGENT};
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE, USER_AGENT};
 use reqwest_eventsource::{Event, EventSource, RequestBuilderExt};
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use tokio_stream::Stream;
 
 use crate::error::{AnthropicError, ErrorResponse};
