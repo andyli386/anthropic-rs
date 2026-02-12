@@ -115,6 +115,16 @@ pub struct MessagesRequest {
     pub tools: Option<Vec<Tool>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<ToolChoice>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<ThinkingConfig>,
+}
+
+/// Configuration for extended thinking / reasoning.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ThinkingConfig {
+    Enabled { budget_tokens: u32 },
+    Disabled,
 }
 
 #[derive(Debug, Default)]
@@ -131,6 +141,7 @@ pub struct MessagesRequestBuilder {
     stream: Option<bool>,
     tools: Option<Vec<Tool>>,
     tool_choice: Option<ToolChoice>,
+    thinking: Option<ThinkingConfig>,
 }
 
 impl MessagesRequestBuilder {
@@ -198,6 +209,11 @@ impl MessagesRequestBuilder {
         self
     }
 
+    pub fn thinking(mut self, thinking: ThinkingConfig) -> Self {
+        self.thinking = Some(thinking);
+        self
+    }
+
     pub fn build(self) -> Result<MessagesRequest, AnthropicError> {
         Ok(MessagesRequest {
             model: self.model.ok_or_else(|| AnthropicError::InvalidRequest("model is required".into()))?,
@@ -214,6 +230,7 @@ impl MessagesRequestBuilder {
             stream: self.stream,
             tools: self.tools,
             tool_choice: self.tool_choice,
+            thinking: self.thinking,
         })
     }
 }

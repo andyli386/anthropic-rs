@@ -186,8 +186,7 @@ impl Client {
         let url = format!("{}{path}", self.api_base);
         // eprintln!("DEBUG: POST URL: {}", url);
         // eprintln!("DEBUG: Headers: {:?}", self.headers());
-        let request =
-            self.http_client.post(&url).headers(self.headers()).json(request).build()?;
+        let request = self.http_client.post(&url).headers(self.headers()).json(request).build()?;
 
         self.execute(request).await
     }
