@@ -36,6 +36,8 @@ pub enum ContentBlock {
     },
     Thinking {
         thinking: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        signature: Option<String>,
     },
     RedactedThinking {
         data: String,
@@ -59,6 +61,7 @@ pub enum ImageSource {
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum DocumentSource {
     Base64 { media_type: String, data: String },
+    Url { url: String },
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -97,9 +100,19 @@ pub struct Tool {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum ToolChoice {
-    Auto,
-    Any,
-    Tool { name: String },
+    Auto {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        disable_parallel_tool_use: Option<bool>,
+    },
+    Any {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        disable_parallel_tool_use: Option<bool>,
+    },
+    Tool {
+        name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        disable_parallel_tool_use: Option<bool>,
+    },
     None,
 }
 
@@ -128,6 +141,27 @@ pub struct MessagesRequest {
     pub tool_choice: Option<ToolChoice>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking: Option<ThinkingConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_config: Option<OutputConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_tier: Option<String>,
+}
+
+/// Configuration for structured output.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct OutputConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format: Option<OutputFormat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
+}
+
+/// Output format specification.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "snake_case", tag = "type")]
+pub enum OutputFormat {
+    JsonSchema { schema: serde_json::Value },
+    Text,
 }
 
 /// Configuration for extended thinking / reasoning.
@@ -153,6 +187,8 @@ pub struct MessagesRequestBuilder {
     tools: Option<Vec<Tool>>,
     tool_choice: Option<ToolChoice>,
     thinking: Option<ThinkingConfig>,
+    output_config: Option<OutputConfig>,
+    service_tier: Option<String>,
 }
 
 impl MessagesRequestBuilder {
@@ -225,6 +261,16 @@ impl MessagesRequestBuilder {
         self
     }
 
+    pub fn output_config(mut self, output_config: OutputConfig) -> Self {
+        self.output_config = Some(output_config);
+        self
+    }
+
+    pub fn service_tier(mut self, service_tier: impl Into<String>) -> Self {
+        self.service_tier = Some(service_tier.into());
+        self
+    }
+
     pub fn build(self) -> Result<MessagesRequest, AnthropicError> {
         Ok(MessagesRequest {
             model: self.model.ok_or_else(|| AnthropicError::InvalidRequest("model is required".into()))?,
@@ -242,6 +288,8 @@ impl MessagesRequestBuilder {
             tools: self.tools,
             tool_choice: self.tool_choice,
             thinking: self.thinking,
+            output_config: self.output_config,
+            service_tier: self.service_tier,
         })
     }
 }
@@ -296,11 +344,18 @@ pub enum ContentBlockDelta {
     TextDelta { text: String },
     InputJsonDelta { partial_json: String },
     ThinkingDelta { thinking: String },
+    SignatureDelta { signature: String },
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct MessageDeltaUsage {
     pub output_tokens: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_tokens: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_creation_input_tokens: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_read_input_tokens: Option<u32>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -309,10 +364,27 @@ pub struct MessageDelta {
     pub stop_sequence: Option<String>,
 }
 
+/// Partial message received in the `message_start` streaming event.
+///
+/// Contains the full message metadata (id, model, usage) but empty content,
+/// which is filled in by subsequent `content_block_*` events.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct StreamMessage {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub message_type: String,
+    pub role: Role,
+    pub content: Vec<ContentBlock>,
+    pub model: String,
+    pub stop_reason: Option<StopReason>,
+    pub stop_sequence: Option<String>,
+    pub usage: Usage,
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum MessagesStreamEvent {
-    MessageStart { message: Message },
+    MessageStart { message: StreamMessage },
     ContentBlockStart { index: usize, content_block: ContentBlock },
     ContentBlockDelta { index: usize, delta: ContentBlockDelta },
     ContentBlockStop { index: usize },

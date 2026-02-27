@@ -235,7 +235,7 @@ impl Client {
 
                         if !status.is_success() {
                             let error = parse_error(status.as_u16(), bytes.as_ref());
-                            if status.as_u16() == 429 {
+                            if status.as_u16() == 429 || status.as_u16() == 529 {
                                 return Err(backoff::Error::Transient { err: error, retry_after: None });
                             }
                             return Err(backoff::Error::Permanent(error));
