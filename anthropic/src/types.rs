@@ -20,6 +20,9 @@ pub enum ContentBlock {
     Image {
         source: ImageSource,
     },
+    Document {
+        source: DocumentSource,
+    },
     ToolUse {
         id: String,
         name: String,
@@ -48,6 +51,13 @@ impl ContentBlock {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum ImageSource {
+    Base64 { media_type: String, data: String },
+    Url { url: String },
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case", tag = "type")]
+pub enum DocumentSource {
     Base64 { media_type: String, data: String },
 }
 
@@ -90,6 +100,7 @@ pub enum ToolChoice {
     Auto,
     Any,
     Tool { name: String },
+    None,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -284,6 +295,7 @@ pub struct MessagesResponse {
 pub enum ContentBlockDelta {
     TextDelta { text: String },
     InputJsonDelta { partial_json: String },
+    ThinkingDelta { thinking: String },
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
